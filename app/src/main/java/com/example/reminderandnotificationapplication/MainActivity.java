@@ -7,8 +7,10 @@ import android.app.TimePickerDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.util.Log;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -18,6 +20,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -34,26 +37,21 @@ import java.util.Locale;
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
     private static final int PERMISSION_REQUEST_CODE = 100;
+    private static final long EXACT_ALARM_PROMPT_COOLDOWN_MS = 60_000;
 
     // UI Components
     private EditText taskTitleInput;
-    private EditText taskDescriptionInput;
-    private Button selectDateButton;
-    private Button selectTimeButton;
-    private Button setReminderButton;
     private TextView selectedDateText;
-    private TextView selectedTimeText;
-    private ListView remindersList;
 
     // Helper classes
     private SharedPreferencesHelper preferencesHelper;
-    private NotificationHelper notificationHelper;
     private AlarmManager alarmManager;
+    private long lastExactAlarmPromptAt;
 
     // Calendar for date/time selection
     private Calendar selectedDateTime = Calendar.getInstance();
-    private SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
-    private SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
+    private final SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
+    private final SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
 
     // Reminders adapter
     private ArrayAdapter<String> remindersAdapter;
@@ -82,13 +80,11 @@ public class MainActivity extends AppCompatActivity {
      */
     private void initializeUI() {
         taskTitleInput = findViewById(R.id.taskTitleInput);
-        taskDescriptionInput = findViewById(R.id.taskDescriptionInput);
-        selectDateButton = findViewById(R.id.selectDateButton);
-        selectTimeButton = findViewById(R.id.selectTimeButton);
-        setReminderButton = findViewById(R.id.setReminderButton);
+        Button selectDateButton = findViewById(R.id.selectDateButton);
+        Button selectTimeButton = findViewById(R.id.selectTimeButton);
+        Button setReminderButton = findViewById(R.id.setReminderButton);
         selectedDateText = findViewById(R.id.selectedDateText);
-        selectedTimeText = findViewById(R.id.selectedTimeText);
-        remindersList = findViewById(R.id.remindersList);
+        ListView remindersList = findViewById(R.id.remindersList);
 
         // Initialize reminders list adapter
         remindersDisplayList = new ArrayList<>();
@@ -115,7 +111,6 @@ public class MainActivity extends AppCompatActivity {
      */
     private void initializeHelpers() {
         preferencesHelper = new SharedPreferencesHelper(this);
-        notificationHelper = new NotificationHelper(this);
         alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
     }
 
@@ -136,18 +131,8 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if (ContextCompat.checkSelfPermission(
-                    this,
-                    android.Manifest.permission.SCHEDULE_EXACT_ALARM
-            ) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(
-                        this,
-                        new String[]{android.Manifest.permission.SCHEDULE_EXACT_ALARM},
-                        PERMISSION_REQUEST_CODE
-                );
-            }
-        }
+        // Ask for exact alarm special access early so first scheduled reminder can be exact.
+        promptForExactAlarmAccess();
     }
 
     /**
@@ -198,6 +183,7 @@ public class MainActivity extends AppCompatActivity {
      */
     private void updateDateTimeDisplay() {
         selectedDateText.setText(String.format(getString(R.string.selected_date), dateFormat.format(selectedDateTime.getTime())));
+        TextView selectedTimeText = findViewById(R.id.selectedTimeText);
         selectedTimeText.setText(String.format(getString(R.string.selected_time), timeFormat.format(selectedDateTime.getTime())));
     }
 
@@ -206,6 +192,7 @@ public class MainActivity extends AppCompatActivity {
      */
     private void scheduleReminder() {
         String title = taskTitleInput.getText().toString().trim();
+        EditText taskDescriptionInput = findViewById(R.id.taskDescriptionInput);
         String description = taskDescriptionInput.getText().toString().trim();
 
         if (title.isEmpty()) {
@@ -265,8 +252,8 @@ public class MainActivity extends AppCompatActivity {
         intent.putExtra(ReminderBroadcastReceiver.EXTRA_REMINDER_TITLE, reminder.getTitle());
         intent.putExtra(ReminderBroadcastReceiver.EXTRA_REMINDER_DESCRIPTION, reminder.getDescription());
 
-        // Create unique request code for each reminder
-        int requestCode = (int) (reminder.getReminderTime() / 1000);
+        // Use stable ID-derived request code to avoid collisions and support cancellation.
+        int requestCode = Math.abs(reminder.getId().hashCode());
 
         PendingIntent pendingIntent = PendingIntent.getBroadcast(
                 this,
@@ -284,14 +271,28 @@ public class MainActivity extends AppCompatActivity {
                             pendingIntent
                     );
                 } else {
+                    promptForExactAlarmAccess();
+                    Toast.makeText(this, "Enable exact alarms for on-time reminders", Toast.LENGTH_SHORT).show();
                     alarmManager.setAndAllowWhileIdle(
                             AlarmManager.RTC_WAKEUP,
                             reminder.getReminderTime(),
                             pendingIntent
                     );
                 }
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                alarmManager.setExactAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP,
+                        reminder.getReminderTime(),
+                        pendingIntent
+                );
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                alarmManager.setExact(
+                        AlarmManager.RTC_WAKEUP,
+                        reminder.getReminderTime(),
+                        pendingIntent
+                );
             } else {
-                alarmManager.setAndAllowWhileIdle(
+                alarmManager.set(
                         AlarmManager.RTC_WAKEUP,
                         reminder.getReminderTime(),
                         pendingIntent
@@ -346,7 +347,8 @@ public class MainActivity extends AppCompatActivity {
      */
     private void cancelAlarm(Reminder reminder) {
         Intent intent = new Intent(this, ReminderBroadcastReceiver.class);
-        int requestCode = (int) (reminder.getReminderTime() / 1000);
+        intent.setAction(ReminderBroadcastReceiver.ACTION_REMINDER_ALARM);
+        int requestCode = Math.abs(reminder.getId().hashCode());
 
         PendingIntent pendingIntent = PendingIntent.getBroadcast(
                 this,
@@ -364,17 +366,44 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
+     * Opens exact alarm settings on Android 12+ if app does not currently have access.
+     */
+    private void promptForExactAlarmAccess() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarmManager == null) {
+            return;
+        }
+        if (alarmManager.canScheduleExactAlarms()) {
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        if (now - lastExactAlarmPromptAt < EXACT_ALARM_PROMPT_COOLDOWN_MS) {
+            return;
+        }
+        lastExactAlarmPromptAt = now;
+
+        try {
+            Intent intent = new Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM);
+            intent.setData(Uri.parse("package:" + getPackageName()));
+            startActivity(intent);
+        } catch (Exception e) {
+            Log.w(TAG, "Unable to open exact alarm settings", e);
+        }
+    }
+
+    /**
      * Clear all input fields and reset to current date/time
      */
     private void clearInputs() {
         taskTitleInput.setText("");
+        EditText taskDescriptionInput = findViewById(R.id.taskDescriptionInput);
         taskDescriptionInput.setText("");
         selectedDateTime = Calendar.getInstance();
         updateDateTimeDisplay();
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == PERMISSION_REQUEST_CODE) {
             for (int result : grantResults) {
