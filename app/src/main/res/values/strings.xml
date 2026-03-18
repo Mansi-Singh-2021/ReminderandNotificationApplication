@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">Reminder and Notification Application</string>
+    <string name="task_title">Task Title</string>
+    <string name="task_description">Task Description</string>
+    <string name="select_date">Select Date</string>
+    <string name="select_time">Select Time</string>
+    <string name="set_reminder">Set Reminder</string>
+    <string name="reminder_set_success">Reminder set successfully!</string>
+    <string name="reminder_error">Error setting reminder</string>
+    <string name="task_title_hint">Enter task title</string>
+    <string name="task_description_hint">Enter task description</string>
+    <string name="selected_date">Selected Date: %s</string>
+    <string name="selected_time">Selected Time: %s</string>
+    <string name="notification_channel_name">Reminder Notifications</string>
+    <string name="notification_channel_description">Notifications for reminders</string>
+</resources>
