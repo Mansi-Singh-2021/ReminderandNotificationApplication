@@ -1,139 +1,281 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/white">
+    android:orientation="vertical"
+    android:background="@color/dark_bg"
+    tools:context=".MainActivity">
 
-    <LinearLayout
-        android:id="@+id/main"
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="20dp"
-        tools:context=".MainActivity">
+        android:layout_height="0dp"
+        android:layout_weight="1">
 
-        <!-- Title -->
-        <TextView
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/app_name"
-            android:textSize="24sp"
-            android:textStyle="bold"
-            android:textColor="@color/primary"
-            android:layout_marginBottom="20dp" />
+            android:orientation="vertical"
+            android:padding="16dp">
 
-        <!-- Task Title Input -->
-        <com.google.android.material.textfield.TextInputLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            android:hint="@string/task_title_hint">
-
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/taskTitleInput"
+            <!-- Header with App Title and Subtitle -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="text" />
-        </com.google.android.material.textfield.TextInputLayout>
+                android:orientation="vertical"
+                android:layout_marginBottom="24dp">
 
-        <!-- Task Description Input -->
-        <com.google.android.material.textfield.TextInputLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            android:hint="@string/task_description_hint">
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/app_name"
+                    android:textSize="28sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/dark_text_primary"
+                    android:layout_marginBottom="4dp" />
 
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/taskDescriptionInput"
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/manage_your_tasks"
+                    android:textSize="14sp"
+                    android:textColor="@color/dark_text_secondary" />
+            </LinearLayout>
+
+            <!-- Create Reminder Card -->
+            <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="text"
-                android:lines="3" />
-        </com.google.android.material.textfield.TextInputLayout>
+                android:layout_marginBottom="24dp"
+                app:cardBackgroundColor="@color/dark_card_bg"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="4dp">
 
-        <!-- Date Selection Section -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/select_date"
-            android:textStyle="bold"
-            android:textSize="14sp"
-            android:layout_marginTop="16dp"
-            android:layout_marginBottom="8dp" />
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
 
-        <Button
-            android:id="@+id/selectDateButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/select_date"
-            android:backgroundTint="@color/primary"
-            android:layout_marginBottom="8dp" />
+                    <!-- Card Title -->
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/create_reminder"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/dark_text_primary"
+                        android:layout_marginBottom="16dp" />
 
-        <TextView
-            android:id="@+id/selectedDateText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textSize="14sp"
-            android:textColor="@color/primary"
-            android:layout_marginBottom="16dp" />
+                    <!-- Title Input -->
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/task_title"
+                        android:textSize="12sp"
+                        android:textColor="@color/dark_text_primary"
+                        android:layout_marginBottom="6dp"
+                        android:textStyle="bold" />
 
-        <!-- Time Selection Section -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/select_time"
-            android:textStyle="bold"
-            android:textSize="14sp"
-            android:layout_marginTop="16dp"
-            android:layout_marginBottom="8dp" />
+                    <EditText
+                        android:id="@+id/taskTitleInput"
+                        android:layout_width="match_parent"
+                        android:layout_height="44dp"
+                        android:background="@drawable/edit_text_bg"
+                        android:hint="@string/task_title_hint"
+                        android:textColor="@color/dark_text_primary"
+                        android:textColorHint="@color/dark_text_secondary"
+                        android:paddingHorizontal="12dp"
+                        android:layout_marginBottom="12dp"
+                        android:inputType="text" />
 
-        <Button
-            android:id="@+id/selectTimeButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/select_time"
-            android:backgroundTint="@color/primary"
-            android:layout_marginBottom="8dp" />
+                    <!-- Description Input -->
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/task_description"
+                        android:textSize="12sp"
+                        android:textColor="@color/dark_text_primary"
+                        android:layout_marginBottom="6dp"
+                        android:textStyle="bold" />
 
-        <TextView
-            android:id="@+id/selectedTimeText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textSize="14sp"
-            android:textColor="@color/primary"
-            android:layout_marginBottom="24dp" />
+                    <EditText
+                        android:id="@+id/taskDescriptionInput"
+                        android:layout_width="match_parent"
+                        android:layout_height="80dp"
+                        android:background="@drawable/edit_text_bg"
+                        android:hint="@string/task_description_hint"
+                        android:textColor="@color/dark_text_primary"
+                        android:textColorHint="@color/dark_text_secondary"
+                        android:paddingHorizontal="12dp"
+                        android:paddingVertical="8dp"
+                        android:layout_marginBottom="12dp"
+                        android:inputType="text"
+                        android:gravity="top" />
 
-        <!-- Set Reminder Button -->
-        <Button
-            android:id="@+id/setReminderButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/set_reminder"
-            android:backgroundTint="@color/accent"
-            android:textColor="@color/black"
-            android:textSize="16sp"
-            android:layout_marginTop="20dp"
-            android:layout_marginBottom="16dp"
-            android:padding="12dp" />
+                    <!-- Date and Time Row -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="12dp">
 
-        <!-- Reminders List -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Your Reminders"
-            android:textStyle="bold"
-            android:textSize="16sp"
-            android:layout_marginTop="20dp"
-            android:layout_marginBottom="12dp" />
+                        <!-- Date Section -->
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:layout_marginEnd="8dp">
 
-        <ListView
-            android:id="@+id/remindersList"
-            android:layout_width="match_parent"
-            android:layout_height="300dp"
-            android:background="@color/light_gray"
-            android:layout_marginBottom="16dp" />
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="@string/select_date"
+                                android:textSize="12sp"
+                                android:textColor="@color/dark_text_primary"
+                                android:layout_marginBottom="6dp"
+                                android:textStyle="bold" />
 
-    </LinearLayout>
-</ScrollView>
+                            <Button
+                                android:id="@+id/selectDateButton"
+                                android:layout_width="match_parent"
+                                android:layout_height="44dp"
+                                android:text="@string/select_date"
+                                android:textSize="12sp"
+                                android:backgroundTint="@color/dark_card_bg"
+                                android:textColor="@color/dark_text_primary"
+                                android:background="@drawable/button_bg"
+                                android:layout_marginBottom="6dp"
+                                style="?attr/borderlessButtonStyle" />
+
+                            <TextView
+                                android:id="@+id/selectedDateText"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:textSize="13sp"
+                                android:textColor="@color/teal_accent"
+                                android:layout_marginBottom="0dp" />
+                        </LinearLayout>
+
+                        <!-- Time Section -->
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:layout_marginStart="8dp">
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="@string/select_time"
+                                android:textSize="12sp"
+                                android:textColor="@color/dark_text_primary"
+                                android:layout_marginBottom="6dp"
+                                android:textStyle="bold" />
+
+                            <Button
+                                android:id="@+id/selectTimeButton"
+                                android:layout_width="match_parent"
+                                android:layout_height="44dp"
+                                android:text="@string/select_time"
+                                android:textSize="12sp"
+                                android:backgroundTint="@color/dark_card_bg"
+                                android:textColor="@color/dark_text_primary"
+                                android:background="@drawable/button_bg"
+                                android:layout_marginBottom="6dp"
+                                style="?attr/borderlessButtonStyle" />
+
+                            <TextView
+                                android:id="@+id/selectedTimeText"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:textSize="13sp"
+                                android:textColor="@color/teal_accent"
+                                android:layout_marginBottom="0dp" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <!-- Add Reminder Button -->
+                    <Button
+                        android:id="@+id/setReminderButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:text="@string/set_reminder"
+                        android:textColor="@color/dark_bg"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:backgroundTint="@color/teal_accent"
+                        android:background="@drawable/button_teal_bg"
+                        android:layout_marginTop="8dp" />
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- Header row for current tab list -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="12dp">
+
+                <TextView
+                    android:id="@+id/remindersSectionTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/upcoming_reminders"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/dark_text_primary" />
+
+                <androidx.cardview.widget.CardView
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    app:cardBackgroundColor="@color/dark_card_bg"
+                    app:cardCornerRadius="4dp">
+
+                    <TextView
+                        android:id="@+id/reminderCountText"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:gravity="center"
+                        android:text="0"
+                        android:textColor="@color/dark_text_secondary"
+                        android:textSize="14sp" />
+                </androidx.cardview.widget.CardView>
+            </LinearLayout>
+
+            <com.google.android.material.tabs.TabLayout
+                android:id="@+id/remindersTabLayout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                android:background="@color/tab_bg_light"
+                app:tabIndicatorColor="@color/teal_accent"
+                app:tabSelectedTextColor="@color/tab_text_dark_selected"
+                app:tabTextColor="@color/tab_text_dark_unselected" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/remindersRecyclerView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:nestedScrollingEnabled="false"
+                tools:listitem="@layout/reminder_card_item" />
+
+            <TextView
+                android:id="@+id/emptyStateText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:gravity="center"
+                android:text="@string/no_upcoming_reminders"
+                android:textColor="@color/dark_text_secondary"
+                android:textSize="14sp"
+                android:visibility="gone" />
+
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

@@ -12,10 +12,8 @@ import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.util.Log;
-import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -27,10 +25,15 @@ import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
+import com.google.android.material.tabs.TabLayout;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 
@@ -42,10 +45,14 @@ public class MainActivity extends AppCompatActivity {
     // UI Components
     private EditText taskTitleInput;
     private TextView selectedDateText;
+    private TextView remindersSectionTitle;
+    private TextView reminderCountText;
+    private TextView emptyStateText;
 
     // Helper classes
     private SharedPreferencesHelper preferencesHelper;
     private AlarmManager alarmManager;
+    private ReminderAdapter reminderAdapter;
     private long lastExactAlarmPromptAt;
 
     // Calendar for date/time selection
@@ -53,9 +60,14 @@ public class MainActivity extends AppCompatActivity {
     private final SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
     private final SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
 
-    // Reminders adapter
-    private ArrayAdapter<String> remindersAdapter;
-    private List<String> remindersDisplayList;
+    // Reminders lists
+    private final List<Reminder> allReminders = new ArrayList<>();
+    private ReminderTab currentTab = ReminderTab.UPCOMING;
+
+    private enum ReminderTab {
+        UPCOMING,
+        PAST
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -84,23 +96,42 @@ public class MainActivity extends AppCompatActivity {
         Button selectTimeButton = findViewById(R.id.selectTimeButton);
         Button setReminderButton = findViewById(R.id.setReminderButton);
         selectedDateText = findViewById(R.id.selectedDateText);
-        ListView remindersList = findViewById(R.id.remindersList);
+        remindersSectionTitle = findViewById(R.id.remindersSectionTitle);
+        reminderCountText = findViewById(R.id.reminderCountText);
+        emptyStateText = findViewById(R.id.emptyStateText);
+        RecyclerView remindersRecyclerView = findViewById(R.id.remindersRecyclerView);
+        TabLayout remindersTabLayout = findViewById(R.id.remindersTabLayout);
 
-        // Initialize reminders list adapter
-        remindersDisplayList = new ArrayList<>();
-        remindersAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, remindersDisplayList);
-        remindersList.setAdapter(remindersAdapter);
+        reminderAdapter = new ReminderAdapter(this::deleteReminder);
+        remindersRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+        remindersRecyclerView.setAdapter(reminderAdapter);
+
+        if (remindersTabLayout.getTabCount() == 0) {
+            remindersTabLayout.addTab(remindersTabLayout.newTab().setText(R.string.upcoming_reminders), true);
+            remindersTabLayout.addTab(remindersTabLayout.newTab().setText(R.string.past_reminders));
+        }
+        remindersTabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
+            @Override
+            public void onTabSelected(TabLayout.Tab tab) {
+                currentTab = tab.getPosition() == 0 ? ReminderTab.UPCOMING : ReminderTab.PAST;
+                renderReminderTab();
+            }
+
+            @Override
+            public void onTabUnselected(TabLayout.Tab tab) {
+                // no-op
+            }
+
+            @Override
+            public void onTabReselected(TabLayout.Tab tab) {
+                // no-op
+            }
+        });
 
         // Set click listeners
         selectDateButton.setOnClickListener(v -> showDatePicker());
         selectTimeButton.setOnClickListener(v -> showTimePicker());
         setReminderButton.setOnClickListener(v -> scheduleReminder());
-
-        // Long click to delete reminder
-        remindersList.setOnItemLongClickListener((parent, view, position, id) -> {
-            deleteReminder(position);
-            return true;
-        });
 
         // Update initial date/time display
         updateDateTimeDisplay();
@@ -279,20 +310,8 @@ public class MainActivity extends AppCompatActivity {
                             pendingIntent
                     );
                 }
-            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                alarmManager.setExactAndAllowWhileIdle(
-                        AlarmManager.RTC_WAKEUP,
-                        reminder.getReminderTime(),
-                        pendingIntent
-                );
-            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-                alarmManager.setExact(
-                        AlarmManager.RTC_WAKEUP,
-                        reminder.getReminderTime(),
-                        pendingIntent
-                );
             } else {
-                alarmManager.set(
+                alarmManager.setExactAndAllowWhileIdle(
                         AlarmManager.RTC_WAKEUP,
                         reminder.getReminderTime(),
                         pendingIntent
@@ -308,38 +327,54 @@ public class MainActivity extends AppCompatActivity {
      * Load and display all reminders
      */
     private void loadReminders() {
-        List<Reminder> reminders = preferencesHelper.getAllReminders();
-        remindersDisplayList.clear();
+        allReminders.clear();
+        allReminders.addAll(preferencesHelper.getAllReminders());
+        allReminders.sort(Comparator.comparingLong(Reminder::getReminderTime));
+        renderReminderTab();
+        Log.d(TAG, "Reminders loaded: " + allReminders.size());
+    }
 
-        for (Reminder reminder : reminders) {
-            String displayText = reminder.getTitle() + " - " + dateFormat.format(reminder.getReminderTime());
-            remindersDisplayList.add(displayText);
+    private void renderReminderTab() {
+        long now = System.currentTimeMillis();
+        List<Reminder> filtered = new ArrayList<>();
+
+        for (Reminder reminder : allReminders) {
+            boolean isPast = reminder.getReminderTime() < now;
+            if (currentTab == ReminderTab.UPCOMING && !isPast) {
+                filtered.add(reminder);
+            } else if (currentTab == ReminderTab.PAST && isPast) {
+                filtered.add(reminder);
+            }
         }
 
-        remindersAdapter.notifyDataSetChanged();
-        Log.d(TAG, "Reminders loaded: " + reminders.size());
+        if (currentTab == ReminderTab.PAST) {
+            filtered.sort((a, b) -> Long.compare(b.getReminderTime(), a.getReminderTime()));
+            remindersSectionTitle.setText(R.string.past_reminders);
+            emptyStateText.setText(R.string.no_past_reminders);
+        } else {
+            remindersSectionTitle.setText(R.string.upcoming_reminders);
+            emptyStateText.setText(R.string.no_upcoming_reminders);
+        }
+
+        reminderCountText.setText(String.valueOf(filtered.size()));
+        emptyStateText.setVisibility(filtered.isEmpty() ? TextView.VISIBLE : TextView.GONE);
+        reminderAdapter.submitList(filtered);
     }
 
     /**
      * Delete a reminder
      */
-    private void deleteReminder(int position) {
-        List<Reminder> reminders = preferencesHelper.getAllReminders();
-        if (position >= 0 && position < reminders.size()) {
-            Reminder reminder = reminders.get(position);
-
-            // Cancel the alarm
-            cancelAlarm(reminder);
-
-            // Delete from preferences
-            preferencesHelper.deleteReminder(reminder.getId());
-
-            // Reload list
-            loadReminders();
-
-            Toast.makeText(this, "Reminder deleted", Toast.LENGTH_SHORT).show();
-            Log.d(TAG, "Reminder deleted: " + reminder.getTitle());
+    private void deleteReminder(Reminder reminder) {
+        if (reminder == null) {
+            return;
         }
+
+        cancelAlarm(reminder);
+        preferencesHelper.deleteReminder(reminder.getId());
+        loadReminders();
+
+        Toast.makeText(this, getString(R.string.reminder_deleted), Toast.LENGTH_SHORT).show();
+        Log.d(TAG, "Reminder deleted: " + reminder.getTitle());
     }
 
     /**
@@ -358,7 +393,9 @@ public class MainActivity extends AppCompatActivity {
         );
 
         try {
-            alarmManager.cancel(pendingIntent);
+            if (alarmManager != null) {
+                alarmManager.cancel(pendingIntent);
+            }
             Log.d(TAG, "Alarm cancelled for: " + reminder.getTitle());
         } catch (Exception e) {
             Log.e(TAG, "Error cancelling alarm: ", e);
@@ -408,7 +445,7 @@ public class MainActivity extends AppCompatActivity {
         if (requestCode == PERMISSION_REQUEST_CODE) {
             for (int result : grantResults) {
                 if (result != PackageManager.PERMISSION_GRANTED) {
-                    Toast.makeText(this, "Permissions required for reminder functionality", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, getString(R.string.permissions_required), Toast.LENGTH_SHORT).show();
                 }
             }
         }
